@@ -1,0 +1,6 @@
+@echo off
+echo Starting Price Tracker App...
+echo Opening browser...
+start http://localhost:5000
+.\venv\Scripts\python app.py
+pause
