@@ -95,32 +95,52 @@ async def scrape_flipkart(query, browser):
         except:
             pass
 
-        # Wait for real product cards (not containers)
-        await page.wait_for_selector("div._1AtVbE > div > div", timeout=15000)
+        # We need a more robust selector for Flipkart products
+        try:
+             await page.wait_for_selector('div.tUxRFH', timeout=15000)
+             cards = await page.query_selector_all('div.tUxRFH')
+        except:
+             try:
+                 await page.wait_for_selector('div[data-id]', timeout=15000)
+                 cards = await page.query_selector_all('div[data-id]')
+             except:
+                 cards = []
 
-        cards = await page.query_selector_all("div._1AtVbE > div > div")
-
-        for card in cards:
-            if len(results) >= 5:
-                break
-
+        for card in cards[:5]:
             try:
-                title_el = await card.query_selector("div._4rR01T, a.s1Q9rs")
-                price_el = await card.query_selector("div._30jeq3")
                 img_el = await card.query_selector("img")
-                link_el = await card.query_selector("a")
+                link_el = await card.query_selector("a[href*='/p/']")
 
-                if not (title_el and price_el and img_el and link_el):
-                    continue
+                title = None
+                price = None
 
-                results.append({
-                    "title": (await title_el.inner_text()).strip(),
-                    "price": (await price_el.inner_text()).strip(),
-                    "image": await img_el.get_attribute("src"),
-                    "link": "https://www.flipkart.com" + await link_el.get_attribute("href"),
-                    "source": "Flipkart"
-                })
+                if img_el:
+                     title = await img_el.get_attribute("alt")
 
+                texts = await card.inner_text()
+                for line in texts.split('\n'):
+                     if '₹' in line and not price:
+                          price = line.strip()
+
+                if not title and link_el:
+                     title = await link_el.inner_text()
+
+                if title and price and img_el:
+                     image = await img_el.get_attribute("src")
+                     if link_el:
+                          link = await link_el.get_attribute("href")
+                          if not link.startswith('http'):
+                              link = "https://www.flipkart.com" + link
+                     else:
+                          link = ""
+
+                     results.append({
+                         "title": title.strip(),
+                         "price": price.strip(),
+                         "image": image,
+                         "link": link,
+                         "source": "Flipkart"
+                     })
             except Exception as e:
                 print("Flipkart card error:", e)
 
