@@ -9,50 +9,68 @@ async def scrape_meesho(query, browser):
     
     try:
         url = f"https://www.meesho.com/search?q={query.replace(' ', '%20')}"
-        await page.goto(url, timeout=45000, wait_until="domcontentloaded")
+        # Set shorter timeout for page load in case of blocking proxy or anti-bot
+        try:
+             await page.goto(url, timeout=15000, wait_until="domcontentloaded")
+        except:
+             pass
+
         await asyncio.sleep(random.uniform(1, 3))
         
-        # Meesho is an SPA. Wait for grid.
-        await page.wait_for_selector('div[class*="ProductList__GridCol"]', timeout=10000)
+        # Check if we got an access denied page
+        content = await page.content()
+        if "Access Denied" in content:
+             print("Meesho access denied (IP blocked). Returning empty results gracefully.")
+             return results
         
-        products = await page.query_selector_all('div[class*="ProductList__GridCol"]')
-        
+        # Wait for either old grid class or any product-like card
+        try:
+             await page.wait_for_selector('div[class*="ProductList__GridCol"]', timeout=5000)
+             products = await page.query_selector_all('div[class*="ProductList__GridCol"]')
+        except:
+             # Look for any links with image and price
+             products = await page.query_selector_all('a[href*="/p/"]')
+             if not products:
+                  products = await page.query_selector_all('a[href*="/s/"]')
+
         for product in products[:5]:
             try:
-                # Title: p[class*="NewProductCard__ProductTitle"] 
-                # Often generic classes like 'sc-...'
-                
-                # We can try selecting by structure
-                # Title usually in a p tag with specific color or styling
-                
-                title_el = await product.query_selector('p[color="greyT2"]') # Product name often has this
-                
-                # Price: h5
-                price_el = await product.query_selector("h5")
-                
-                # Image: img
-                img_el = await product.query_selector("img")
-                
-                # Link: a
-                link_el = await product.query_selector("a")
+                # Handle generic anchor tags
+                if await product.evaluate("el => el.tagName") == "A":
+                     link_el = product
+                     img_el = await product.query_selector("img")
+                     texts = await product.inner_text()
+                else:
+                     link_el = await product.query_selector("a")
+                     img_el = await product.query_selector("img")
+                     texts = await product.inner_text()
                 
                 title = ""
-                if title_el:
-                        title = await title_el.inner_text()
-                else:
-                        # Fallback: Try fetching alt text from image
-                        title = await img_el.get_attribute("alt") if img_el else "Unknown Product"
+                price = ""
+                
+                if img_el:
+                     title = await img_el.get_attribute("alt")
 
-                if price_el and img_el:
-                    price = await price_el.inner_text()
+                for line in texts.split('\n'):
+                     if '₹' in line and not price:
+                          price = line.strip()
+                     elif len(line) > 10 and not title: # Fallback for title if no alt
+                          title = line.strip()
+                
+                if not title and img_el:
+                     title = "Meesho Product"
+
+                if price and img_el:
                     image = await img_el.get_attribute("src")
                     link = await link_el.get_attribute("href")
+                    if not link.startswith('http'):
+                         link = f"https://www.meesho.com{link}"
                     
                     results.append({
-                        'title': title,
-                        'price': price,
+                        'title': title.strip(),
+                        'price': price.strip(),
                         'image': image,
-                        'link': f"https://www.meesho.com{link}",
+                        'link': link,
                         'source': 'Meesho'
                     })
             except Exception as e:

@@ -22,26 +22,42 @@ async def scrape_amazon(query, browser):
         
         for product in products[:5]: # Top 5 results
             try:
-                title_el = await product.query_selector("h2 a span")
-                # User suggested selector for price without login
+                title_el = await product.query_selector("h2 span")
                 price_el = await product.query_selector(".a-price span.a-offscreen")
                 if not price_el:
                      price_el = await product.query_selector(".a-price-whole") # Fallback
                      
                 img_el = await product.query_selector("img.s-image")
-                link_el = await product.query_selector("h2 a")
+
+                link_el = await product.query_selector("a.a-link-normal.s-underline-text.s-underline-link-text.s-link-style.a-text-normal")
+                if not link_el:
+                    link_el = await product.query_selector("h2 a")
                 
                 if title_el and price_el and img_el:
                     title = await title_el.inner_text()
+
+                    if len(title) < 15:
+                        alt_title = await img_el.get_attribute("alt")
+                        if alt_title:
+                             title = alt_title
+
                     price = await price_el.inner_text()
+                    if not price.startswith("₹"):
+                        price = f"₹{price}"
+
                     image = await img_el.get_attribute("src")
-                    link = await link_el.get_attribute("href")
+
+                    link = ""
+                    if link_el:
+                        link_href = await link_el.get_attribute("href")
+                        if link_href:
+                            link = f"https://www.amazon.in{link_href}"
                     
                     results.append({
                         'title': title,
-                        'price': f"₹{price}",
+                        'price': price,
                         'image': image,
-                        'link': f"https://www.amazon.in{link}",
+                        'link': link,
                         'source': 'Amazon'
                     })
             except Exception as e:
