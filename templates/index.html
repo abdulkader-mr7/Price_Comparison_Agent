@@ -14,13 +14,16 @@
             Track and compare products across Amazon, Flipkart, and Meesho in one click.
         </p>
         
-        <div class="w-full max-w-2xl relative group">
+        <div class="w-full max-w-3xl relative group">
             <div class="absolute -inset-1 bg-gradient-to-r from-brand-500 to-purple-600 rounded-lg blur opacity-50 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
-            <div class="relative flex p-2 bg-white rounded-lg shadow-xl">
+            <div class="relative flex p-2 bg-white rounded-lg shadow-xl flex-col sm:flex-row gap-2">
                 <input type="text" id="searchInput" placeholder="Search for iPhone 15, Shoes, etc..." 
                     class="flex-1 p-4 text-lg outline-none text-gray-700 rounded-l-md placeholder-gray-400">
+                <div class="w-px bg-gray-200 hidden sm:block mx-1"></div>
+                <input type="text" id="pincodeInput" placeholder="PIN Code (Optional)" maxlength="6"
+                    class="w-full sm:w-48 p-4 text-lg outline-none text-gray-700 placeholder-gray-400 border-t sm:border-t-0 border-gray-100">
                 <button onclick="searchProducts()" id="searchBtn"
-                    class="bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-8 rounded-md transition duration-300 flex items-center gap-2">
+                    class="bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-8 rounded-md transition duration-300 flex items-center justify-center gap-2">
                     <i class="fas fa-search"></i> <span>Search</span>
                 </button>
             </div>

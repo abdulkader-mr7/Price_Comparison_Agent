@@ -1,5 +1,6 @@
 async function searchProducts() {
     const query = document.getElementById('searchInput').value;
+    const pincode = document.getElementById('pincodeInput').value;
     if (!query) return;
 
     // UI Updates
@@ -14,7 +15,11 @@ async function searchProducts() {
     resultsArea.innerHTML = ''; // Clear previous
 
     try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        let url = `/api/search?q=${encodeURIComponent(query)}`;
+        if (pincode) {
+            url += `&pincode=${encodeURIComponent(pincode)}`;
+        }
+        const response = await fetch(url);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -78,12 +83,50 @@ function renderPlatform(name, products, logoUrl) {
 
     products.forEach(p => {
         const card = document.createElement('div');
-        card.className = 'group relative flex flex-col bg-white rounded-xl border border-gray-100 hover:shadow-2xl transition duration-300 overflow-hidden';
+        let cardClasses = 'group relative flex flex-col bg-white rounded-xl border hover:shadow-2xl transition duration-300 overflow-hidden';
+
+        if (p.best_buy) {
+            cardClasses += ' border-green-500 shadow-lg ring-1 ring-green-500';
+        } else {
+            cardClasses += ' border-gray-100';
+        }
+
+        card.className = cardClasses;
+
+        let bestBuyBadge = p.best_buy ? `
+            <div class="absolute top-0 left-0 w-full bg-green-500 text-white text-xs font-bold py-1 text-center z-10 shadow-md">
+                <i class="fas fa-star mr-1"></i> OVERALL BEST BUY
+            </div>
+        ` : '';
+
+        // If it's a best buy, push the top-2 right-2 badge down a bit
+        let sourceBadgeTop = p.best_buy ? 'top-8' : 'top-2';
+
+        // Additional offer info HTML
+        let offerHtml = '';
+        if (p.delivery_desc !== 'Unknown') {
+            offerHtml = `
+                <div class="mt-2 text-xs text-gray-500 flex flex-col gap-1">
+                    <div class="flex items-center gap-1 text-green-600">
+                        <i class="fas fa-truck text-[10px]"></i> ${p.delivery_desc}
+                    </div>
+                    ${p.discount > 0 ? `
+                        <div class="flex items-center gap-1 text-orange-600">
+                            <i class="fas fa-tags text-[10px]"></i> ${p.discount_desc}
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="mt-2 text-sm font-semibold text-gray-700 pt-2 border-t border-gray-50">
+                    Effective: ₹${p.effective_price.toLocaleString('en-IN')}
+                </div>
+            `;
+        }
 
         card.innerHTML = `
-            <div class="aspect-square w-full overflow-hidden bg-gray-100 relative">
+            ${bestBuyBadge}
+            <div class="aspect-square w-full overflow-hidden bg-gray-100 relative ${p.best_buy ? 'mt-6' : ''}">
                 <img src="${p.image}" alt="${p.title}" class="h-full w-full object-contain object-center group-hover:scale-105 transition duration-500 p-4">
-                <div class="absolute top-2 right-2 bg-brand-500 text-white text-xs font-bold px-2 py-1 rounded shadow-sm">
+                <div class="absolute ${sourceBadgeTop} right-2 bg-brand-500 text-white text-xs font-bold px-2 py-1 rounded shadow-sm z-10">
                     ${p.source}
                 </div>
             </div>
@@ -93,11 +136,14 @@ function renderPlatform(name, products, logoUrl) {
                         ${p.title}
                     </a>
                 </h3>
-                <div class="mt-auto flex items-center justify-between pt-2 border-t border-gray-50">
-                    <p class="text-xl font-extrabold text-brand-600">${p.price}</p>
-                    <a href="${p.link}" target="_blank" class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-50 text-brand-600 hover:bg-brand-600 hover:text-white transition duration-300">
-                        <i class="fas fa-external-link-alt text-xs"></i>
-                    </a>
+                <div class="mt-auto">
+                    <div class="flex items-center justify-between pt-2 border-t border-gray-50">
+                        <p class="text-xl font-extrabold text-brand-600">${p.price}</p>
+                        <a href="${p.link}" target="_blank" class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-50 text-brand-600 hover:bg-brand-600 hover:text-white transition duration-300">
+                            <i class="fas fa-external-link-alt text-xs"></i>
+                        </a>
+                    </div>
+                    ${offerHtml}
                 </div>
             </div>
         `;
