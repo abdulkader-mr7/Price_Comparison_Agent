@@ -1,3 +1,25 @@
+function parsePrice(priceString) {
+    if (!priceString) return Infinity;
+    const digits = priceString.replace(/\D/g, '');
+    return digits ? parseInt(digits, 10) : Infinity;
+}
+
+function clearSearch() {
+    const input = document.getElementById('searchInput');
+    input.value = '';
+    input.focus();
+    document.getElementById('clearBtn').classList.add('hidden');
+}
+
+document.getElementById('searchInput').addEventListener('input', function(e) {
+    const clearBtn = document.getElementById('clearBtn');
+    if (e.target.value.length > 0) {
+        clearBtn.classList.remove('hidden');
+    } else {
+        clearBtn.classList.add('hidden');
+    }
+});
+
 async function searchProducts() {
     const query = document.getElementById('searchInput').value;
     if (!query) return;
@@ -12,6 +34,7 @@ async function searchProducts() {
     loading.classList.remove('hidden');
     resultsArea.classList.add('hidden');
     resultsArea.innerHTML = ''; // Clear previous
+    document.getElementById('recommendationArea').classList.add('hidden');
 
     try {
         const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
@@ -25,6 +48,67 @@ async function searchProducts() {
 
         loading.classList.add('hidden');
         resultsArea.classList.remove('hidden');
+
+        // Smart Recommendation Logic
+        const recommendationArea = document.getElementById('recommendationArea');
+        recommendationArea.innerHTML = ''; // clear previous
+
+        let allProducts = [];
+        if (data.amazon && Array.isArray(data.amazon) && data.amazon.length > 0) allProducts.push(...data.amazon);
+        if (data.flipkart && Array.isArray(data.flipkart) && data.flipkart.length > 0) allProducts.push(...data.flipkart);
+        if (data.meesho && Array.isArray(data.meesho) && data.meesho.length > 0) allProducts.push(...data.meesho);
+
+        if (allProducts.length > 0) {
+            let bestProduct = allProducts[0];
+            let minPrice = parsePrice(bestProduct.price);
+
+            for (let i = 1; i < allProducts.length; i++) {
+                const currentPrice = parsePrice(allProducts[i].price);
+                if (currentPrice < minPrice) {
+                    minPrice = currentPrice;
+                    bestProduct = allProducts[i];
+                }
+            }
+
+            if (minPrice !== Infinity) {
+                recommendationArea.classList.remove('hidden');
+                recommendationArea.innerHTML = `
+                    <div class="bg-gradient-to-r from-green-50 to-emerald-100 border border-green-200 rounded-2xl p-6 shadow-lg relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-10">
+                            <i class="fas fa-crown text-6xl text-green-600"></i>
+                        </div>
+                        <div class="relative z-10 flex flex-col sm:flex-row items-center gap-6">
+                            <div class="w-32 h-32 flex-shrink-0 bg-white rounded-xl p-2 shadow-sm">
+                                <img src="${bestProduct.image}" alt="${bestProduct.title}" class="w-full h-full object-contain">
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Best Price Pick</span>
+                                    <span class="text-sm font-semibold text-gray-500">on ${bestProduct.source}</span>
+                                </div>
+                                <h3 class="text-xl font-bold text-gray-900 mb-2 line-clamp-2" title="${bestProduct.title}">
+                                    ${bestProduct.title}
+                                </h3>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-3xl font-extrabold text-green-700">${bestProduct.price}</span>
+                                    <a href="${bestProduct.link}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition shadow-md flex items-center gap-2">
+                                        View Deal <i class="fas fa-arrow-right text-sm"></i>
+                                    </a>
+                                </div>
+                                <p class="text-sm text-green-800 mt-3 font-medium flex items-start gap-2">
+                                    <i class="fas fa-lightbulb mt-1"></i>
+                                    Tip: Check for additional delivery costs and available bank card discounts on the platform before purchasing.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                 recommendationArea.classList.add('hidden');
+            }
+        } else {
+            recommendationArea.classList.add('hidden');
+        }
 
         // Render sections
         renderPlatform('Amazon', data.amazon, 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Amazon_icon.svg');
@@ -78,25 +162,25 @@ function renderPlatform(name, products, logoUrl) {
 
     products.forEach(p => {
         const card = document.createElement('div');
-        card.className = 'group relative flex flex-col bg-white rounded-xl border border-gray-100 hover:shadow-2xl transition duration-300 overflow-hidden';
+        card.className = 'group relative flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition duration-300 overflow-hidden';
 
         card.innerHTML = `
-            <div class="aspect-square w-full overflow-hidden bg-gray-100 relative">
-                <img src="${p.image}" alt="${p.title}" class="h-full w-full object-contain object-center group-hover:scale-105 transition duration-500 p-4">
-                <div class="absolute top-2 right-2 bg-brand-500 text-white text-xs font-bold px-2 py-1 rounded shadow-sm">
+            <div class="aspect-square w-full overflow-hidden bg-gray-50 relative p-6">
+                <img src="${p.image}" alt="${p.title}" class="h-full w-full object-contain object-center group-hover:scale-110 transition duration-500 drop-shadow-md">
+                <div class="absolute top-3 right-3 bg-brand-600 text-white text-[10px] uppercase font-extrabold px-2.5 py-1 rounded-md shadow-sm tracking-wider">
                     ${p.source}
                 </div>
             </div>
-            <div class="flex-1 p-4 flex flex-col">
-                <h3 class="text-sm font-medium text-gray-900 line-clamp-2 mb-2 min-h-[2.5rem]" title="${p.title}">
+            <div class="flex-1 p-5 flex flex-col">
+                <h3 class="text-base font-semibold text-gray-800 line-clamp-2 mb-3 min-h-[3rem] leading-tight" title="${p.title}">
                     <a href="${p.link}" target="_blank" class="hover:text-brand-600 transition">
                         ${p.title}
                     </a>
                 </h3>
-                <div class="mt-auto flex items-center justify-between pt-2 border-t border-gray-50">
-                    <p class="text-xl font-extrabold text-brand-600">${p.price}</p>
-                    <a href="${p.link}" target="_blank" class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-50 text-brand-600 hover:bg-brand-600 hover:text-white transition duration-300">
-                        <i class="fas fa-external-link-alt text-xs"></i>
+                <div class="mt-auto flex items-center justify-between pt-3 border-t border-gray-100">
+                    <p class="text-2xl font-black text-brand-600">${p.price}</p>
+                    <a href="${p.link}" target="_blank" class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand-50 text-brand-600 hover:bg-brand-600 hover:text-white transition duration-300 shadow-sm hover:shadow-md">
+                        <i class="fas fa-arrow-up-right-from-square text-sm"></i>
                     </a>
                 </div>
             </div>
