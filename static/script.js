@@ -22,6 +22,7 @@ document.getElementById('searchInput').addEventListener('input', function(e) {
 
 async function searchProducts() {
     const query = document.getElementById('searchInput').value;
+    const pincode = document.getElementById('pincodeInput').value;
     if (!query) return;
 
     // UI Updates
@@ -37,7 +38,11 @@ async function searchProducts() {
     document.getElementById('recommendationArea').classList.add('hidden');
 
     try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        let url = `/api/search?q=${encodeURIComponent(query)}`;
+        if (pincode) {
+            url += `&pincode=${encodeURIComponent(pincode)}`;
+        }
+        const response = await fetch(url);
 
         if (!response.ok) {
             const errorText = await response.text();
