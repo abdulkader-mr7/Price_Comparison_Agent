@@ -51,7 +51,9 @@ async def scrape_amazon(query, browser):
                     if link_el:
                         link_href = await link_el.get_attribute("href")
                         if link_href:
-                            link = f"https://www.amazon.in{link_href}"
+                            link = link_href
+                            if not link.startswith('http'):
+                                link = f"https://www.amazon.in{link_href}"
                     
                     results.append({
                         'title': title,
