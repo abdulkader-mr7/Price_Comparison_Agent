@@ -22,7 +22,8 @@ document.getElementById('searchInput').addEventListener('input', function(e) {
 
 async function searchProducts() {
     const query = document.getElementById('searchInput').value;
-    const pincode = document.getElementById('pincodeInput').value;
+    const pincodeElement = document.getElementById('pincodeInput');
+    const pincode = pincodeElement ? pincodeElement.value : '';
     if (!query) return;
 
     // UI Updates
